@@ -16,11 +16,11 @@ import (
 )
 
 const (
-	defaultEnabledLabelKey     = "mcp.enabled"
-	defaultEnabledLabelValue   = "true"
-	defaultNameLabelKey        = "mcp.name"
-	defaultURLLabelKey         = "mcp.url"
-	defaultDescriptionLabelKey = "mcp.description"
+	defaultEnabledLabelKey   = "mcp.enabled"
+	defaultEnabledLabelValue = "true"
+	defaultPortLabelKey      = "mcp.port"
+	defaultPathLabelKey      = "mcp.path"
+	defaultMCPPath           = "/mcp"
 )
 
 type Config struct {
@@ -87,11 +87,11 @@ func configFromEnvironment() Config {
 		ListenAddress:     environmentValue("LISTEN_ADDR", ":8080"),
 		ReconcileInterval: 30 * time.Second,
 		Labels: registry.LabelConfig{
-			EnabledKey:     defaultEnabledLabelKey,
-			EnabledValue:   defaultEnabledLabelValue,
-			NameKey:        defaultNameLabelKey,
-			URLKey:         defaultURLLabelKey,
-			DescriptionKey: defaultDescriptionLabelKey,
+			EnabledKey:   defaultEnabledLabelKey,
+			EnabledValue: defaultEnabledLabelValue,
+			PortKey:      defaultPortLabelKey,
+			PathKey:      defaultPathLabelKey,
+			DefaultPath:  defaultMCPPath,
 		},
 	}
 
@@ -105,9 +105,9 @@ func configFromEnvironment() Config {
 	}
 	config.Labels.EnabledKey = environmentValue("MCP_LABEL_ENABLED_KEY", config.Labels.EnabledKey)
 	config.Labels.EnabledValue = environmentValue("MCP_LABEL_ENABLED_VALUE", config.Labels.EnabledValue)
-	config.Labels.NameKey = environmentValue("MCP_LABEL_NAME_KEY", config.Labels.NameKey)
-	config.Labels.URLKey = environmentValue("MCP_LABEL_URL_KEY", config.Labels.URLKey)
-	config.Labels.DescriptionKey = environmentValue("MCP_LABEL_DESCRIPTION_KEY", config.Labels.DescriptionKey)
+	config.Labels.PortKey = environmentValue("MCP_LABEL_PORT_KEY", config.Labels.PortKey)
+	config.Labels.PathKey = environmentValue("MCP_LABEL_PATH_KEY", config.Labels.PathKey)
+	config.Labels.DefaultPath = environmentValue("MCP_DEFAULT_PATH", config.Labels.DefaultPath)
 	return config
 }
 

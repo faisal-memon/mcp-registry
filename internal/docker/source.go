@@ -33,8 +33,12 @@ func (s *Source) List(ctx context.Context) ([]registry.Container, error) {
 	}
 	result := make([]registry.Container, 0, len(containers.Items))
 	for _, item := range containers.Items {
+		if len(item.Names) == 0 {
+			continue
+		}
 		result = append(result, registry.Container{
 			ID:     strings.TrimPrefix(item.ID, "/"),
+			Name:   strings.TrimPrefix(item.Names[0], "/"),
 			Labels: item.Labels,
 		})
 	}

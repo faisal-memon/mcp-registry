@@ -11,6 +11,7 @@ import (
 // Container is the small part of Docker container metadata the registry needs.
 type Container struct {
 	ID     string
+	Name   string
 	Labels map[string]string
 }
 
@@ -78,7 +79,7 @@ func (r *Registry) Reconcile(ctx context.Context) error {
 
 	servers := make([]Server, 0, len(containers))
 	for _, container := range containers {
-		server, ok := r.labels.serverFromLabels(container.Labels)
+		server, ok := r.labels.serverFromContainer(container)
 		if !ok {
 			continue
 		}

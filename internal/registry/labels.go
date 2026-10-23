@@ -1,25 +1,36 @@
 package registry
 
-// LabelConfig describes the Docker labels that identify and describe MCP containers.
+import (
+	"fmt"
+	"strings"
+)
+
+// LabelConfig describes the Docker labels that identify MCP containers and their endpoints.
 type LabelConfig struct {
-	EnabledKey     string
-	EnabledValue   string
-	NameKey        string
-	URLKey         string
-	DescriptionKey string
+	EnabledKey   string
+	EnabledValue string
+	PortKey      string
+	PathKey      string
+	DefaultPath  string
 }
 
-func (c LabelConfig) serverFromLabels(labels map[string]string) (Server, bool) {
-	if labels[c.EnabledKey] != c.EnabledValue {
+func (c LabelConfig) serverFromContainer(container Container) (Server, bool) {
+	if container.Name == "" || container.Labels[c.EnabledKey] != c.EnabledValue {
 		return Server{}, false
 	}
-	name, url := labels[c.NameKey], labels[c.URLKey]
-	if name == "" || url == "" {
+	port := container.Labels[c.PortKey]
+	if port == "" {
 		return Server{}, false
+	}
+	path := container.Labels[c.PathKey]
+	if path == "" {
+		path = c.DefaultPath
+	}
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + path
 	}
 	return Server{
-		Name:        name,
-		URL:         url,
-		Description: labels[c.DescriptionKey],
+		Name: container.Name,
+		URL:  fmt.Sprintf("http://%s:%s%s", container.Name, port, path),
 	}, true
 }

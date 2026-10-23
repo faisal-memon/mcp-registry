@@ -11,12 +11,11 @@ Label an MCP container with all of these values:
 ```yaml
 labels:
   mcp.enabled: "true"
-  mcp.name: muni
-  mcp.url: http://muni-mcp:8787/mcp
-  mcp.description: Nearby Muni stops
+  mcp.port: "8787"
+  mcp.path: /mcp # optional; this is the default
 ```
 
-The URL must be reachable from the registry container, normally through the shared MCP Docker network.
+The registry uses the container name as the catalogue name and the network host. That name must be resolvable from the registry container through the shared MCP Docker network.
 
 The defaults are neutral and can be replaced without rebuilding the service:
 
@@ -24,9 +23,9 @@ The defaults are neutral and can be replaced without rebuilding the service:
 | --- | --- |
 | `MCP_LABEL_ENABLED_KEY` | `mcp.enabled` |
 | `MCP_LABEL_ENABLED_VALUE` | `true` |
-| `MCP_LABEL_NAME_KEY` | `mcp.name` |
-| `MCP_LABEL_URL_KEY` | `mcp.url` |
-| `MCP_LABEL_DESCRIPTION_KEY` | `mcp.description` |
+| `MCP_LABEL_PORT_KEY` | `mcp.port` |
+| `MCP_LABEL_PATH_KEY` | `mcp.path` |
+| `MCP_DEFAULT_PATH` | `/mcp` |
 
 ## Running it
 

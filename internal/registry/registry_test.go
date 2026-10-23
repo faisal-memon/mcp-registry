@@ -35,35 +35,47 @@ func (d *fakeDiscoverer) Discover(_ context.Context, endpoint string) ([]Tool, e
 func TestReconcileBuildsSortedSnapshotFromEnabledContainers(t *testing.T) {
 	config := testLabelConfig()
 	discoverer := &fakeDiscoverer{toolsByURL: map[string][]Tool{
-		"http://muni:8787/mcp": {{Name: "nearest_stops", InputSchema: map[string]any{"type": "object"}}},
-		"http://news:8080/mcp": {{Name: "latest_headlines", InputSchema: map[string]any{"type": "object"}}},
+		"http://muni-mcp:8787/mcp": {{Name: "nearest_stops", InputSchema: map[string]any{"type": "object"}}},
+		"http://news-mcp:8080/mcp": {{Name: "latest_headlines", InputSchema: map[string]any{"type": "object"}}},
 	}}
 	service := New(fakeSource{containers: []Container{
-		{ID: "ignored", Labels: map[string]string{}},
-		{ID: "muni", Labels: labels(config, "muni", "http://muni:8787/mcp", "Nearby Muni stops")},
-		{ID: "news", Labels: labels(config, "news", "http://news:8080/mcp", "Local news")},
-		{ID: "incomplete", Labels: map[string]string{config.EnabledKey: config.EnabledValue, config.NameKey: "missing-url"}},
+		{ID: "ignored", Name: "ignored", Labels: map[string]string{}},
+		{ID: "muni", Name: "muni-mcp", Labels: labels(config, "8787", "")},
+		{ID: "news", Name: "news-mcp", Labels: labels(config, "8080", "")},
+		{ID: "incomplete", Name: "incomplete-mcp", Labels: map[string]string{config.EnabledKey: config.EnabledValue}},
 	}}, discoverer, config)
 
 	require.NoError(t, service.Reconcile(context.Background()))
 
 	want := Snapshot{Servers: []Server{
-		{Name: "muni", URL: "http://muni:8787/mcp", Enabled: true, Description: "Nearby Muni stops", Tools: discoverer.toolsByURL["http://muni:8787/mcp"]},
-		{Name: "news", URL: "http://news:8080/mcp", Enabled: true, Description: "Local news", Tools: discoverer.toolsByURL["http://news:8080/mcp"]},
+		{Name: "muni-mcp", URL: "http://muni-mcp:8787/mcp", Enabled: true, Tools: discoverer.toolsByURL["http://muni-mcp:8787/mcp"]},
+		{Name: "news-mcp", URL: "http://news-mcp:8080/mcp", Enabled: true, Tools: discoverer.toolsByURL["http://news-mcp:8080/mcp"]},
 	}}
 	assert.Equal(t, want, service.Snapshot())
-	assert.Equal(t, []string{"http://muni:8787/mcp", "http://news:8080/mcp"}, discoverer.calls)
+	assert.Equal(t, []string{"http://muni-mcp:8787/mcp", "http://news-mcp:8080/mcp"}, discoverer.calls)
+}
+
+func TestReconcileUsesMCPPathLabelWhenPresent(t *testing.T) {
+	config := testLabelConfig()
+	discoverer := &fakeDiscoverer{toolsByURL: map[string][]Tool{"http://weather-mcp:9000/custom": nil}}
+	service := New(fakeSource{containers: []Container{{
+		Name:   "weather-mcp",
+		Labels: labels(config, "9000", "/custom"),
+	}}}, discoverer, config)
+
+	require.NoError(t, service.Reconcile(context.Background()))
+	assert.Equal(t, []string{"http://weather-mcp:9000/custom"}, discoverer.calls)
 }
 
 func TestReconcileMarksUnavailableServiceWithoutDiscardingHealthyServices(t *testing.T) {
 	config := testLabelConfig()
 	discoverer := &fakeDiscoverer{
-		toolsByURL: map[string][]Tool{"http://healthy/mcp": {{Name: "available", InputSchema: map[string]any{"type": "object"}}}},
-		errByURL:   map[string]error{"http://unavailable/mcp": errors.New("connection refused")},
+		toolsByURL: map[string][]Tool{"http://healthy-mcp:8080/mcp": {{Name: "available", InputSchema: map[string]any{"type": "object"}}}},
+		errByURL:   map[string]error{"http://unavailable-mcp:8080/mcp": errors.New("connection refused")},
 	}
 	service := New(fakeSource{containers: []Container{
-		{Labels: labels(config, "healthy", "http://healthy/mcp", "")},
-		{Labels: labels(config, "unavailable", "http://unavailable/mcp", "")},
+		{Name: "healthy-mcp", Labels: labels(config, "8080", "")},
+		{Name: "unavailable-mcp", Labels: labels(config, "8080", "")},
 	}}, discoverer, config)
 
 	require.NoError(t, service.Reconcile(context.Background()))
@@ -76,8 +88,8 @@ func TestReconcileMarksUnavailableServiceWithoutDiscardingHealthyServices(t *tes
 
 func TestReconcileKeepsLastSnapshotWhenContainerListingFails(t *testing.T) {
 	config := testLabelConfig()
-	discoverer := &fakeDiscoverer{toolsByURL: map[string][]Tool{"http://muni/mcp": nil}}
-	service := New(fakeSource{containers: []Container{{Labels: labels(config, "muni", "http://muni/mcp", "")}}}, discoverer, config)
+	discoverer := &fakeDiscoverer{toolsByURL: map[string][]Tool{"http://muni-mcp:8787/mcp": nil}}
+	service := New(fakeSource{containers: []Container{{Name: "muni-mcp", Labels: labels(config, "8787", "")}}}, discoverer, config)
 	require.NoError(t, service.Reconcile(context.Background()))
 	before := service.Snapshot()
 	service.source = fakeSource{err: errors.New("Docker unavailable")}
@@ -88,19 +100,18 @@ func TestReconcileKeepsLastSnapshotWhenContainerListingFails(t *testing.T) {
 
 func testLabelConfig() LabelConfig {
 	return LabelConfig{
-		EnabledKey:     "mcp.enabled",
-		EnabledValue:   "true",
-		NameKey:        "mcp.name",
-		URLKey:         "mcp.url",
-		DescriptionKey: "mcp.description",
+		EnabledKey:   "mcp.enabled",
+		EnabledValue: "true",
+		PortKey:      "mcp.port",
+		PathKey:      "mcp.path",
+		DefaultPath:  "/mcp",
 	}
 }
 
-func labels(config LabelConfig, name, url, description string) map[string]string {
+func labels(config LabelConfig, port, path string) map[string]string {
 	return map[string]string{
-		config.EnabledKey:     config.EnabledValue,
-		config.NameKey:        name,
-		config.URLKey:         url,
-		config.DescriptionKey: description,
+		config.EnabledKey: config.EnabledValue,
+		config.PortKey:    port,
+		config.PathKey:    path,
 	}
 }

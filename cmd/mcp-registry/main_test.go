@@ -13,19 +13,19 @@ func TestConfigFromEnvironment(t *testing.T) {
 	t.Setenv("RECONCILE_INTERVAL", "45s")
 	t.Setenv("MCP_LABEL_ENABLED_KEY", "example.com/mcp")
 	t.Setenv("MCP_LABEL_ENABLED_VALUE", "enabled")
-	t.Setenv("MCP_LABEL_NAME_KEY", "example.com/name")
-	t.Setenv("MCP_LABEL_URL_KEY", "example.com/url")
-	t.Setenv("MCP_LABEL_DESCRIPTION_KEY", "example.com/description")
+	t.Setenv("MCP_LABEL_PORT_KEY", "example.com/port")
+	t.Setenv("MCP_LABEL_PATH_KEY", "example.com/path")
+	t.Setenv("MCP_DEFAULT_PATH", "/custom")
 
 	assert.Equal(t, Config{
 		ListenAddress:     "127.0.0.1:9090",
 		ReconcileInterval: 45 * time.Second,
 		Labels: registry.LabelConfig{
-			EnabledKey:     "example.com/mcp",
-			EnabledValue:   "enabled",
-			NameKey:        "example.com/name",
-			URLKey:         "example.com/url",
-			DescriptionKey: "example.com/description",
+			EnabledKey:   "example.com/mcp",
+			EnabledValue: "enabled",
+			PortKey:      "example.com/port",
+			PathKey:      "example.com/path",
+			DefaultPath:  "/custom",
 		},
 	}, configFromEnvironment())
 }
@@ -36,9 +36,9 @@ func TestConfigFromEnvironmentUsesDefaults(t *testing.T) {
 		"RECONCILE_INTERVAL",
 		"MCP_LABEL_ENABLED_KEY",
 		"MCP_LABEL_ENABLED_VALUE",
-		"MCP_LABEL_NAME_KEY",
-		"MCP_LABEL_URL_KEY",
-		"MCP_LABEL_DESCRIPTION_KEY",
+		"MCP_LABEL_PORT_KEY",
+		"MCP_LABEL_PATH_KEY",
+		"MCP_DEFAULT_PATH",
 	} {
 		t.Setenv(name, "")
 	}
@@ -47,11 +47,11 @@ func TestConfigFromEnvironmentUsesDefaults(t *testing.T) {
 		ListenAddress:     ":8080",
 		ReconcileInterval: 30 * time.Second,
 		Labels: registry.LabelConfig{
-			EnabledKey:     "mcp.enabled",
-			EnabledValue:   "true",
-			NameKey:        "mcp.name",
-			URLKey:         "mcp.url",
-			DescriptionKey: "mcp.description",
+			EnabledKey:   "mcp.enabled",
+			EnabledValue: "true",
+			PortKey:      "mcp.port",
+			PathKey:      "mcp.path",
+			DefaultPath:  "/mcp",
 		},
 	}, configFromEnvironment())
 }
