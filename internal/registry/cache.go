@@ -4,7 +4,7 @@ package registry
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"sort"
 	"sync"
 	"time"
@@ -28,15 +28,16 @@ func NewCache(source ContainerSource, discoverer Discoverer, labels LabelConfig)
 }
 
 // Start populates the cache once, then refreshes it until ctx is cancelled.
-// An initial failure leaves the cache empty but does not prevent later refreshes.
+// An initial discovery failure prevents the registry from starting with an empty snapshot.
 func (c *Cache) Start(ctx context.Context, interval time.Duration) error {
 	if interval <= 0 {
 		return fmt.Errorf("cache refresh interval must be positive")
 	}
-
-	err := c.reconcile(ctx)
+	if err := c.reconcile(ctx); err != nil {
+		return err
+	}
 	go c.refreshPeriodically(ctx, interval)
-	return err
+	return nil
 }
 
 // Snapshot returns a copy of the latest successfully discovered services.
@@ -57,7 +58,7 @@ func (c *Cache) refreshPeriodically(ctx context.Context, interval time.Duration)
 			return
 		case <-ticker.C:
 			if err := c.reconcile(ctx); err != nil {
-				log.Printf("refresh MCP registry cache: %v", err)
+				slog.Warn("refresh MCP registry cache", "error", err)
 			}
 		}
 	}
@@ -80,7 +81,9 @@ func (c *Cache) reconcile(ctx context.Context) error {
 			continue
 		}
 		tools, err := c.discoverer.Discover(attemptCtx, server.URL)
-		if err == nil {
+		if err != nil {
+			slog.Warn("discover MCP server", "name", server.Name, "url", server.URL, "error", err)
+		} else {
 			server.Enabled = true
 			server.Tools = tools
 		}

@@ -4,7 +4,8 @@ package main
 import (
 	"context"
 	"errors"
-	"log"
+	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -31,18 +32,27 @@ type Config struct {
 }
 
 func main() {
-	config := configFromEnvironment()
+	if err := run(); err != nil {
+		slog.Error("run MCP registry", "error", err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
+	config, err := configFromEnvironment()
+	if err != nil {
+		return err
+	}
 	dockerSource, err := docker.NewSource()
 	if err != nil {
-		log.Printf("create Docker client: %v", err)
-		return
+		return fmt.Errorf("create Docker source: %w", err)
 	}
 	cache := registry.NewCache(dockerSource, mcp.NewDiscoverer(), config.Labels)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	if err := cache.Start(ctx, config.ReconcileInterval); err != nil {
-		log.Printf("initialize MCP registry cache: %v", err)
+		return fmt.Errorf("start registry cache: %w", err)
 	}
 
 	server := &http.Server{
@@ -54,16 +64,19 @@ func main() {
 		<-ctx.Done()
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		_ = server.Shutdown(shutdownCtx)
+		if err := server.Shutdown(shutdownCtx); err != nil {
+			slog.Error("shut down MCP registry HTTP server", "error", err)
+		}
 	}()
 
-	log.Printf("serving MCP registry at %s", server.Addr)
+	slog.Info("serving MCP registry", "address", server.Addr)
 	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		log.Printf("MCP registry stopped unexpectedly: %v", err)
+		return fmt.Errorf("serve MCP registry: %w", err)
 	}
+	return nil
 }
 
-func configFromEnvironment() Config {
+func configFromEnvironment() (Config, error) {
 	config := Config{
 		ListenAddress:     environmentValue("LISTEN_ADDR", ":8080"),
 		ReconcileInterval: 30 * time.Second,
@@ -78,18 +91,17 @@ func configFromEnvironment() Config {
 
 	if value := os.Getenv("RECONCILE_INTERVAL"); value != "" {
 		interval, err := time.ParseDuration(value)
-		if err == nil && interval > 0 {
-			config.ReconcileInterval = interval
-		} else {
-			log.Printf("invalid RECONCILE_INTERVAL %q; using %s", value, config.ReconcileInterval)
+		if err != nil || interval <= 0 {
+			return Config{}, fmt.Errorf("RECONCILE_INTERVAL must be a positive duration: %q", value)
 		}
+		config.ReconcileInterval = interval
 	}
 	config.Labels.EnabledKey = environmentValue("MCP_LABEL_ENABLED_KEY", config.Labels.EnabledKey)
 	config.Labels.EnabledValue = environmentValue("MCP_LABEL_ENABLED_VALUE", config.Labels.EnabledValue)
 	config.Labels.PortKey = environmentValue("MCP_LABEL_PORT_KEY", config.Labels.PortKey)
 	config.Labels.PathKey = environmentValue("MCP_LABEL_PATH_KEY", config.Labels.PathKey)
 	config.Labels.DefaultPath = environmentValue("MCP_DEFAULT_PATH", config.Labels.DefaultPath)
-	return config
+	return config, nil
 }
 
 func environmentValue(name, fallback string) string {

@@ -6,6 +6,7 @@ import (
 
 	"github.com/faisal-memon/mcp-registry/internal/registry"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestConfigFromEnvironment(t *testing.T) {
@@ -17,6 +18,8 @@ func TestConfigFromEnvironment(t *testing.T) {
 	t.Setenv("MCP_LABEL_PATH_KEY", "example.com/path")
 	t.Setenv("MCP_DEFAULT_PATH", "/custom")
 
+	config, err := configFromEnvironment()
+	require.NoError(t, err)
 	assert.Equal(t, Config{
 		ListenAddress:     "127.0.0.1:9090",
 		ReconcileInterval: 45 * time.Second,
@@ -27,7 +30,7 @@ func TestConfigFromEnvironment(t *testing.T) {
 			PathKey:      "example.com/path",
 			DefaultPath:  "/custom",
 		},
-	}, configFromEnvironment())
+	}, config)
 }
 
 func TestConfigFromEnvironmentUsesDefaults(t *testing.T) {
@@ -43,6 +46,8 @@ func TestConfigFromEnvironmentUsesDefaults(t *testing.T) {
 		t.Setenv(name, "")
 	}
 
+	config, err := configFromEnvironment()
+	require.NoError(t, err)
 	assert.Equal(t, Config{
 		ListenAddress:     ":8080",
 		ReconcileInterval: 30 * time.Second,
@@ -53,5 +58,13 @@ func TestConfigFromEnvironmentUsesDefaults(t *testing.T) {
 			PathKey:      "mcp.path",
 			DefaultPath:  "/mcp",
 		},
-	}, configFromEnvironment())
+	}, config)
+}
+
+func TestConfigFromEnvironmentRejectsInvalidRefreshInterval(t *testing.T) {
+	t.Setenv("RECONCILE_INTERVAL", "never")
+
+	_, err := configFromEnvironment()
+
+	assert.Error(t, err)
 }

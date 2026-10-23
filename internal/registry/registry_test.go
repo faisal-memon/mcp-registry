@@ -116,6 +116,15 @@ func TestCacheStartPopulatesSnapshot(t *testing.T) {
 	}}}, cache.Snapshot())
 }
 
+func TestCacheStartReturnsInitialDiscoveryFailure(t *testing.T) {
+	cache := NewCache(fakeSource{err: errors.New("Docker unavailable")}, &fakeDiscoverer{}, testLabelConfig())
+
+	err := cache.Start(context.Background(), time.Hour)
+
+	require.Error(t, err)
+	assert.Equal(t, Snapshot{}, cache.Snapshot())
+}
+
 func TestCacheStartRejectsNonPositiveRefreshInterval(t *testing.T) {
 	cache := NewCache(nil, nil, testLabelConfig())
 
