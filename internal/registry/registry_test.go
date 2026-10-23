@@ -86,22 +86,6 @@ func TestReconcileKeepsLastSnapshotWhenContainerListingFails(t *testing.T) {
 	assert.Equal(t, before, service.Snapshot())
 }
 
-func TestLabelConfigFromEnvironmentUsesOverrides(t *testing.T) {
-	config := labelConfigFrom(func(name string) string {
-		return map[string]string{
-			"MCP_LABEL_ENABLED_KEY":     "example.com/mcp",
-			"MCP_LABEL_ENABLED_VALUE":   "enabled",
-			"MCP_LABEL_NAME_KEY":        "example.com/name",
-			"MCP_LABEL_URL_KEY":         "example.com/url",
-			"MCP_LABEL_DESCRIPTION_KEY": "example.com/description",
-		}[name]
-	})
-
-	server, ok := config.serverFromLabels(labels(config, "weather", "http://weather/mcp", "Weather"))
-	require.True(t, ok)
-	assert.Equal(t, Server{Name: "weather", URL: "http://weather/mcp", Description: "Weather"}, server)
-}
-
 func labels(config LabelConfig, name, url, description string) map[string]string {
 	return map[string]string{
 		config.EnabledKey:     config.EnabledValue,

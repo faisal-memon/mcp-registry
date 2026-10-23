@@ -1,7 +1,5 @@
 package registry
 
-import "os"
-
 const (
 	defaultEnabledLabelKey     = "mcp.enabled"
 	defaultEnabledLabelValue   = "true"
@@ -28,29 +26,6 @@ func DefaultLabelConfig() LabelConfig {
 		URLKey:         defaultURLLabelKey,
 		DescriptionKey: defaultDescriptionLabelKey,
 	}
-}
-
-// LabelConfigFromEnvironment loads label names from environment variables, using neutral defaults.
-func LabelConfigFromEnvironment() LabelConfig {
-	return labelConfigFrom(os.Getenv)
-}
-
-func labelConfigFrom(lookup func(string) string) LabelConfig {
-	defaults := DefaultLabelConfig()
-	return LabelConfig{
-		EnabledKey:     valueOrDefault(lookup("MCP_LABEL_ENABLED_KEY"), defaults.EnabledKey),
-		EnabledValue:   valueOrDefault(lookup("MCP_LABEL_ENABLED_VALUE"), defaults.EnabledValue),
-		NameKey:        valueOrDefault(lookup("MCP_LABEL_NAME_KEY"), defaults.NameKey),
-		URLKey:         valueOrDefault(lookup("MCP_LABEL_URL_KEY"), defaults.URLKey),
-		DescriptionKey: valueOrDefault(lookup("MCP_LABEL_DESCRIPTION_KEY"), defaults.DescriptionKey),
-	}
-}
-
-func valueOrDefault(value, fallback string) string {
-	if value != "" {
-		return value
-	}
-	return fallback
 }
 
 func (c LabelConfig) serverFromLabels(labels map[string]string) (Server, bool) {

@@ -21,7 +21,7 @@ func main() {
 		log.Printf("create Docker client: %v", err)
 		return
 	}
-	service := registry.New(source, registry.MCPDiscoverer{}, registry.LabelConfigFromEnvironment())
+	service := registry.New(source, registry.MCPDiscoverer{}, labelConfigFromEnvironment())
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
@@ -83,4 +83,21 @@ func reconcileInterval() time.Duration {
 		log.Printf("invalid RECONCILE_INTERVAL %q; using 30s", value)
 	}
 	return 30 * time.Second
+}
+
+func labelConfigFromEnvironment() registry.LabelConfig {
+	config := registry.DefaultLabelConfig()
+	config.EnabledKey = environmentValue("MCP_LABEL_ENABLED_KEY", config.EnabledKey)
+	config.EnabledValue = environmentValue("MCP_LABEL_ENABLED_VALUE", config.EnabledValue)
+	config.NameKey = environmentValue("MCP_LABEL_NAME_KEY", config.NameKey)
+	config.URLKey = environmentValue("MCP_LABEL_URL_KEY", config.URLKey)
+	config.DescriptionKey = environmentValue("MCP_LABEL_DESCRIPTION_KEY", config.DescriptionKey)
+	return config
+}
+
+func environmentValue(name, fallback string) string {
+	if value := os.Getenv(name); value != "" {
+		return value
+	}
+	return fallback
 }
