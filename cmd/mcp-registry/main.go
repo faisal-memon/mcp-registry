@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/faisal-memon/mcp-registry/internal/docker"
+	"github.com/faisal-memon/mcp-registry/internal/mcp"
 	"github.com/faisal-memon/mcp-registry/internal/registry"
 )
 
@@ -36,7 +37,7 @@ func main() {
 		log.Printf("create Docker client: %v", err)
 		return
 	}
-	service := registry.NewCache(source, registry.MCPDiscoverer{}, config.Labels)
+	service := registry.NewCache(source, mcp.NewDiscoverer(), config.Labels)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
