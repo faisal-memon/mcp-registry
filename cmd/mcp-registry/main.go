@@ -32,12 +32,12 @@ type Config struct {
 
 func main() {
 	config := configFromEnvironment()
-	source, err := docker.NewSource()
+	dockerSource, err := docker.NewSource()
 	if err != nil {
 		log.Printf("create Docker client: %v", err)
 		return
 	}
-	service := registry.NewCache(source, mcp.NewDiscoverer(), config.Labels)
+	service := registry.NewCache(dockerSource, mcp.NewDiscoverer(), config.Labels)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
