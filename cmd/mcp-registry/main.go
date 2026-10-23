@@ -37,17 +37,17 @@ func main() {
 		log.Printf("create Docker client: %v", err)
 		return
 	}
-	service := registry.NewCache(dockerSource, mcp.NewDiscoverer(), config.Labels)
+	cache := registry.NewCache(dockerSource, mcp.NewDiscoverer(), config.Labels)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	if err := service.Start(ctx, config.ReconcileInterval); err != nil {
+	if err := cache.Start(ctx, config.ReconcileInterval); err != nil {
 		log.Printf("initialize MCP registry cache: %v", err)
 	}
 
 	server := &http.Server{
 		Addr:              config.ListenAddress,
-		Handler:           service.Handler(),
+		Handler:           cache.Handler(),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	go func() {
