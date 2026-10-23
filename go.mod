@@ -1,6 +1,6 @@
 module github.com/faisal-memon/mcp-registry
 
-go 1.26.6
+go 1.26.10
 
 require (
 	github.com/moby/moby/client v0.6.2
