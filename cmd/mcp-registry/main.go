@@ -3,10 +3,8 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -55,25 +53,8 @@ func run() error {
 		return fmt.Errorf("start registry cache: %w", err)
 	}
 
-	server := &http.Server{
-		Addr:              config.ListenAddress,
-		Handler:           cache.Handler(),
-		ReadHeaderTimeout: 5 * time.Second,
-	}
-	go func() {
-		<-ctx.Done()
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		if err := server.Shutdown(shutdownCtx); err != nil {
-			slog.Error("shut down MCP registry HTTP server", "error", err)
-		}
-	}()
-
-	slog.Info("serving MCP registry", "address", server.Addr)
-	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		return fmt.Errorf("serve MCP registry: %w", err)
-	}
-	return nil
+	server := registry.NewHTTPServer(config.ListenAddress, cache)
+	return server.Run(ctx)
 }
 
 func configFromEnvironment() (Config, error) {
