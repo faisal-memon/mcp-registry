@@ -21,7 +21,7 @@ func main() {
 		log.Printf("create Docker client: %v", err)
 		return
 	}
-	service := registry.New(source, registry.MCPDiscoverer{})
+	service := registry.New(source, registry.MCPDiscoverer{}, registry.LabelConfigFromEnvironment())
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 

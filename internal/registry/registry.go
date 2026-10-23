@@ -8,13 +8,6 @@ import (
 	"sync"
 )
 
-const (
-	labelEnabled     = "io.faisal-memon.mcp.enabled"
-	labelName        = "io.faisal-memon.mcp.name"
-	labelURL         = "io.faisal-memon.mcp.url"
-	labelDescription = "io.faisal-memon.mcp.description"
-)
-
 // Container is the small part of Docker container metadata the registry needs.
 type Container struct {
 	ID     string
@@ -56,14 +49,15 @@ type Snapshot struct {
 type Registry struct {
 	source     ContainerSource
 	discoverer Discoverer
+	labels     LabelConfig
 
 	mu       sync.RWMutex
 	snapshot Snapshot
 }
 
 // New creates an empty registry backed by the supplied container source and MCP discoverer.
-func New(source ContainerSource, discoverer Discoverer) *Registry {
-	return &Registry{source: source, discoverer: discoverer}
+func New(source ContainerSource, discoverer Discoverer, labels LabelConfig) *Registry {
+	return &Registry{source: source, discoverer: discoverer, labels: labels}
 }
 
 // Snapshot returns a copy of the latest successfully discovered services.
@@ -84,7 +78,7 @@ func (r *Registry) Reconcile(ctx context.Context) error {
 
 	servers := make([]Server, 0, len(containers))
 	for _, container := range containers {
-		server, ok := serverFromLabels(container.Labels)
+		server, ok := r.labels.serverFromLabels(container.Labels)
 		if !ok {
 			continue
 		}
@@ -101,19 +95,4 @@ func (r *Registry) Reconcile(ctx context.Context) error {
 	r.snapshot = Snapshot{Servers: servers}
 	r.mu.Unlock()
 	return nil
-}
-
-func serverFromLabels(labels map[string]string) (Server, bool) {
-	if labels[labelEnabled] != "true" {
-		return Server{}, false
-	}
-	name, url := labels[labelName], labels[labelURL]
-	if name == "" || url == "" {
-		return Server{}, false
-	}
-	return Server{
-		Name:        name,
-		URL:         url,
-		Description: labels[labelDescription],
-	}, true
 }

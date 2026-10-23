@@ -8,7 +8,7 @@ import (
 )
 
 func TestHandlerServesSnapshot(t *testing.T) {
-	service := New(nil, nil)
+	service := New(nil, nil, DefaultLabelConfig())
 	service.snapshot = Snapshot{Servers: []Server{{
 		Name:    "muni",
 		URL:     "http://muni:8787/mcp",
@@ -35,7 +35,7 @@ func TestHandlerServesSnapshot(t *testing.T) {
 func TestHandlerHealthCheck(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/healthz", nil)
 	response := httptest.NewRecorder()
-	New(nil, nil).Handler().ServeHTTP(response, request)
+	New(nil, nil, DefaultLabelConfig()).Handler().ServeHTTP(response, request)
 	if response.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", response.Code, http.StatusOK)
 	}

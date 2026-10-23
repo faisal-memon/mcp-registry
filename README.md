@@ -10,13 +10,23 @@ Label an MCP container with all of these values:
 
 ```yaml
 labels:
-  io.faisal-memon.mcp.enabled: "true"
-  io.faisal-memon.mcp.name: muni
-  io.faisal-memon.mcp.url: http://muni-mcp:8787/mcp
-  io.faisal-memon.mcp.description: Nearby Muni stops
+  mcp.enabled: "true"
+  mcp.name: muni
+  mcp.url: http://muni-mcp:8787/mcp
+  mcp.description: Nearby Muni stops
 ```
 
 The URL must be reachable from the registry container, normally through the shared MCP Docker network.
+
+The defaults are neutral and can be replaced without rebuilding the service:
+
+| Setting | Default |
+| --- | --- |
+| `MCP_LABEL_ENABLED_KEY` | `mcp.enabled` |
+| `MCP_LABEL_ENABLED_VALUE` | `true` |
+| `MCP_LABEL_NAME_KEY` | `mcp.name` |
+| `MCP_LABEL_URL_KEY` | `mcp.url` |
+| `MCP_LABEL_DESCRIPTION_KEY` | `mcp.description` |
 
 ## Running it
 
