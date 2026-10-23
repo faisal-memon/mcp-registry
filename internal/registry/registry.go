@@ -4,9 +4,13 @@ package registry
 import (
 	"context"
 	"fmt"
+	"log"
 	"sort"
 	"sync"
+	"time"
 )
+
+const reconcileTimeout = 10 * time.Second
 
 // Container is the small part of Docker container metadata the registry needs.
 type Container struct {
@@ -46,8 +50,8 @@ type Snapshot struct {
 	Servers []Server `json:"servers"`
 }
 
-// Registry builds an in-memory registry from live containers.
-type Registry struct {
+// Cache holds the latest registry snapshot and refreshes it from live containers.
+type Cache struct {
 	source     ContainerSource
 	discoverer Discoverer
 	labels     LabelConfig
@@ -56,34 +60,64 @@ type Registry struct {
 	snapshot Snapshot
 }
 
-// New creates an empty registry backed by the supplied container source and MCP discoverer.
-func New(source ContainerSource, discoverer Discoverer, labels LabelConfig) *Registry {
-	return &Registry{source: source, discoverer: discoverer, labels: labels}
+// NewCache creates an empty cache backed by the supplied container source and MCP discoverer.
+func NewCache(source ContainerSource, discoverer Discoverer, labels LabelConfig) *Cache {
+	return &Cache{source: source, discoverer: discoverer, labels: labels}
+}
+
+// Start populates the cache once, then refreshes it until ctx is cancelled.
+// An initial failure leaves the cache empty but does not prevent later refreshes.
+func (c *Cache) Start(ctx context.Context, interval time.Duration) error {
+	if interval <= 0 {
+		return fmt.Errorf("cache refresh interval must be positive")
+	}
+
+	err := c.reconcile(ctx)
+	go c.refreshPeriodically(ctx, interval)
+	return err
 }
 
 // Snapshot returns a copy of the latest successfully discovered services.
-func (r *Registry) Snapshot() Snapshot {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+func (c *Cache) Snapshot() Snapshot {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
-	servers := append([]Server(nil), r.snapshot.Servers...)
+	servers := append([]Server(nil), c.snapshot.Servers...)
 	return Snapshot{Servers: servers}
 }
 
-// Reconcile replaces the snapshot with MCP services discovered from running labelled containers.
-func (r *Registry) Reconcile(ctx context.Context) error {
-	containers, err := r.source.List(ctx)
+func (c *Cache) refreshPeriodically(ctx context.Context, interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if err := c.reconcile(ctx); err != nil {
+				log.Printf("refresh MCP registry cache: %v", err)
+			}
+		}
+	}
+}
+
+// reconcile replaces the snapshot with MCP services discovered from running labelled containers.
+func (c *Cache) reconcile(ctx context.Context) error {
+	attemptCtx, cancel := context.WithTimeout(ctx, reconcileTimeout)
+	defer cancel()
+
+	containers, err := c.source.List(attemptCtx)
 	if err != nil {
 		return fmt.Errorf("list MCP containers: %w", err)
 	}
 
 	servers := make([]Server, 0, len(containers))
 	for _, container := range containers {
-		server, ok := r.labels.serverFromContainer(container)
+		server, ok := c.labels.serverFromContainer(container)
 		if !ok {
 			continue
 		}
-		tools, err := r.discoverer.Discover(ctx, server.URL)
+		tools, err := c.discoverer.Discover(attemptCtx, server.URL)
 		if err == nil {
 			server.Enabled = true
 			server.Tools = tools
@@ -92,8 +126,8 @@ func (r *Registry) Reconcile(ctx context.Context) error {
 	}
 	sort.Slice(servers, func(i, j int) bool { return servers[i].Name < servers[j].Name })
 
-	r.mu.Lock()
-	r.snapshot = Snapshot{Servers: servers}
-	r.mu.Unlock()
+	c.mu.Lock()
+	c.snapshot = Snapshot{Servers: servers}
+	c.mu.Unlock()
 	return nil
 }

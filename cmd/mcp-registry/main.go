@@ -36,12 +36,13 @@ func main() {
 		log.Printf("create Docker client: %v", err)
 		return
 	}
-	service := registry.New(source, registry.MCPDiscoverer{}, config.Labels)
+	service := registry.NewCache(source, registry.MCPDiscoverer{}, config.Labels)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	reconcile(ctx, service)
-	go reconcilePeriodically(ctx, service, config.ReconcileInterval)
+	if err := service.Start(ctx, config.ReconcileInterval); err != nil {
+		log.Printf("initialize MCP registry cache: %v", err)
+	}
 
 	server := &http.Server{
 		Addr:              config.ListenAddress,
@@ -58,27 +59,6 @@ func main() {
 	log.Printf("serving MCP registry at %s", server.Addr)
 	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Printf("MCP registry stopped unexpectedly: %v", err)
-	}
-}
-
-func reconcile(ctx context.Context, service *registry.Registry) {
-	attemptCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	if err := service.Reconcile(attemptCtx); err != nil {
-		log.Printf("reconcile MCP registry: %v", err)
-	}
-}
-
-func reconcilePeriodically(ctx context.Context, service *registry.Registry, interval time.Duration) {
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			reconcile(ctx, service)
-		}
 	}
 }
 
