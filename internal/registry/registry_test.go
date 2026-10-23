@@ -33,7 +33,7 @@ func (d *fakeDiscoverer) Discover(_ context.Context, endpoint string) ([]Tool, e
 }
 
 func TestReconcileBuildsSortedSnapshotFromEnabledContainers(t *testing.T) {
-	config := DefaultLabelConfig()
+	config := testLabelConfig()
 	discoverer := &fakeDiscoverer{toolsByURL: map[string][]Tool{
 		"http://muni:8787/mcp": {{Name: "nearest_stops", InputSchema: map[string]any{"type": "object"}}},
 		"http://news:8080/mcp": {{Name: "latest_headlines", InputSchema: map[string]any{"type": "object"}}},
@@ -56,7 +56,7 @@ func TestReconcileBuildsSortedSnapshotFromEnabledContainers(t *testing.T) {
 }
 
 func TestReconcileMarksUnavailableServiceWithoutDiscardingHealthyServices(t *testing.T) {
-	config := DefaultLabelConfig()
+	config := testLabelConfig()
 	discoverer := &fakeDiscoverer{
 		toolsByURL: map[string][]Tool{"http://healthy/mcp": {{Name: "available", InputSchema: map[string]any{"type": "object"}}}},
 		errByURL:   map[string]error{"http://unavailable/mcp": errors.New("connection refused")},
@@ -75,7 +75,7 @@ func TestReconcileMarksUnavailableServiceWithoutDiscardingHealthyServices(t *tes
 }
 
 func TestReconcileKeepsLastSnapshotWhenContainerListingFails(t *testing.T) {
-	config := DefaultLabelConfig()
+	config := testLabelConfig()
 	discoverer := &fakeDiscoverer{toolsByURL: map[string][]Tool{"http://muni/mcp": nil}}
 	service := New(fakeSource{containers: []Container{{Labels: labels(config, "muni", "http://muni/mcp", "")}}}, discoverer, config)
 	require.NoError(t, service.Reconcile(context.Background()))
@@ -84,6 +84,16 @@ func TestReconcileKeepsLastSnapshotWhenContainerListingFails(t *testing.T) {
 
 	require.Error(t, service.Reconcile(context.Background()))
 	assert.Equal(t, before, service.Snapshot())
+}
+
+func testLabelConfig() LabelConfig {
+	return LabelConfig{
+		EnabledKey:     "mcp.enabled",
+		EnabledValue:   "true",
+		NameKey:        "mcp.name",
+		URLKey:         "mcp.url",
+		DescriptionKey: "mcp.description",
+	}
 }
 
 func labels(config LabelConfig, name, url, description string) map[string]string {

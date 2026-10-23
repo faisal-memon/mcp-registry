@@ -1,13 +1,5 @@
 package registry
 
-const (
-	defaultEnabledLabelKey     = "mcp.enabled"
-	defaultEnabledLabelValue   = "true"
-	defaultNameLabelKey        = "mcp.name"
-	defaultURLLabelKey         = "mcp.url"
-	defaultDescriptionLabelKey = "mcp.description"
-)
-
 // LabelConfig describes the Docker labels that identify and describe MCP containers.
 type LabelConfig struct {
 	EnabledKey     string
@@ -15,17 +7,6 @@ type LabelConfig struct {
 	NameKey        string
 	URLKey         string
 	DescriptionKey string
-}
-
-// DefaultLabelConfig returns neutral label names suitable for most Docker deployments.
-func DefaultLabelConfig() LabelConfig {
-	return LabelConfig{
-		EnabledKey:     defaultEnabledLabelKey,
-		EnabledValue:   defaultEnabledLabelValue,
-		NameKey:        defaultNameLabelKey,
-		URLKey:         defaultURLLabelKey,
-		DescriptionKey: defaultDescriptionLabelKey,
-	}
 }
 
 func (c LabelConfig) serverFromLabels(labels map[string]string) (Server, bool) {

@@ -15,6 +15,14 @@ import (
 	"github.com/faisal-memon/mcp-registry/internal/registry"
 )
 
+const (
+	defaultEnabledLabelKey     = "mcp.enabled"
+	defaultEnabledLabelValue   = "true"
+	defaultNameLabelKey        = "mcp.name"
+	defaultURLLabelKey         = "mcp.url"
+	defaultDescriptionLabelKey = "mcp.description"
+)
+
 func main() {
 	source, err := docker.NewSource()
 	if err != nil {
@@ -85,8 +93,18 @@ func reconcileInterval() time.Duration {
 	return 30 * time.Second
 }
 
+func defaultLabelConfig() registry.LabelConfig {
+	return registry.LabelConfig{
+		EnabledKey:     defaultEnabledLabelKey,
+		EnabledValue:   defaultEnabledLabelValue,
+		NameKey:        defaultNameLabelKey,
+		URLKey:         defaultURLLabelKey,
+		DescriptionKey: defaultDescriptionLabelKey,
+	}
+}
+
 func labelConfigFromEnvironment() registry.LabelConfig {
-	config := registry.DefaultLabelConfig()
+	config := defaultLabelConfig()
 	config.EnabledKey = environmentValue("MCP_LABEL_ENABLED_KEY", config.EnabledKey)
 	config.EnabledValue = environmentValue("MCP_LABEL_ENABLED_VALUE", config.EnabledValue)
 	config.NameKey = environmentValue("MCP_LABEL_NAME_KEY", config.NameKey)

@@ -33,5 +33,5 @@ func TestLabelConfigFromEnvironmentUsesDefaults(t *testing.T) {
 	} {
 		t.Setenv(name, "")
 	}
-	assert.Equal(t, registry.DefaultLabelConfig(), labelConfigFromEnvironment())
+	assert.Equal(t, defaultLabelConfig(), labelConfigFromEnvironment())
 }

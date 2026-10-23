@@ -11,7 +11,7 @@ import (
 )
 
 func TestHandlerServesSnapshot(t *testing.T) {
-	service := New(nil, nil, DefaultLabelConfig())
+	service := New(nil, nil, testLabelConfig())
 	service.snapshot = Snapshot{Servers: []Server{{
 		Name:    "muni",
 		URL:     "http://muni:8787/mcp",
@@ -33,6 +33,6 @@ func TestHandlerServesSnapshot(t *testing.T) {
 func TestHandlerHealthCheck(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/healthz", nil)
 	response := httptest.NewRecorder()
-	New(nil, nil, DefaultLabelConfig()).Handler().ServeHTTP(response, request)
+	New(nil, nil, testLabelConfig()).Handler().ServeHTTP(response, request)
 	assert.Equal(t, http.StatusOK, response.Code)
 }
