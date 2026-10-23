@@ -5,6 +5,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestHandlerServesSnapshot(t *testing.T) {
@@ -20,23 +23,16 @@ func TestHandlerServesSnapshot(t *testing.T) {
 	response := httptest.NewRecorder()
 	service.Handler().ServeHTTP(response, request)
 
-	if response.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d", response.Code, http.StatusOK)
-	}
+	require.Equal(t, http.StatusOK, response.Code)
 	var got Snapshot
-	if err := json.NewDecoder(response.Body).Decode(&got); err != nil {
-		t.Fatalf("decode response: %v", err)
-	}
-	if len(got.Servers) != 1 || got.Servers[0].Name != "muni" {
-		t.Fatalf("response = %#v, want Muni server", got)
-	}
+	require.NoError(t, json.NewDecoder(response.Body).Decode(&got))
+	require.Len(t, got.Servers, 1)
+	assert.Equal(t, "muni", got.Servers[0].Name)
 }
 
 func TestHandlerHealthCheck(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/healthz", nil)
 	response := httptest.NewRecorder()
 	New(nil, nil, DefaultLabelConfig()).Handler().ServeHTTP(response, request)
-	if response.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d", response.Code, http.StatusOK)
-	}
+	assert.Equal(t, http.StatusOK, response.Code)
 }

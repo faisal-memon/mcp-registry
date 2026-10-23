@@ -3,8 +3,10 @@ package registry
 import (
 	"context"
 	"errors"
-	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type fakeSource struct {
@@ -43,21 +45,14 @@ func TestReconcileBuildsSortedSnapshotFromEnabledContainers(t *testing.T) {
 		{ID: "incomplete", Labels: map[string]string{config.EnabledKey: config.EnabledValue, config.NameKey: "missing-url"}},
 	}}, discoverer, config)
 
-	if err := service.Reconcile(context.Background()); err != nil {
-		t.Fatalf("Reconcile() error = %v", err)
-	}
+	require.NoError(t, service.Reconcile(context.Background()))
 
-	got := service.Snapshot()
 	want := Snapshot{Servers: []Server{
 		{Name: "muni", URL: "http://muni:8787/mcp", Enabled: true, Description: "Nearby Muni stops", Tools: discoverer.toolsByURL["http://muni:8787/mcp"]},
 		{Name: "news", URL: "http://news:8080/mcp", Enabled: true, Description: "Local news", Tools: discoverer.toolsByURL["http://news:8080/mcp"]},
 	}}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("Snapshot() = %#v, want %#v", got, want)
-	}
-	if wantCalls := []string{"http://muni:8787/mcp", "http://news:8080/mcp"}; !reflect.DeepEqual(discoverer.calls, wantCalls) {
-		t.Fatalf("Discover calls = %v, want %v", discoverer.calls, wantCalls)
-	}
+	assert.Equal(t, want, service.Snapshot())
+	assert.Equal(t, []string{"http://muni:8787/mcp", "http://news:8080/mcp"}, discoverer.calls)
 }
 
 func TestReconcileMarksUnavailableServiceWithoutDiscardingHealthyServices(t *testing.T) {
@@ -71,44 +66,24 @@ func TestReconcileMarksUnavailableServiceWithoutDiscardingHealthyServices(t *tes
 		{Labels: labels(config, "unavailable", "http://unavailable/mcp", "")},
 	}}, discoverer, config)
 
-	if err := service.Reconcile(context.Background()); err != nil {
-		t.Fatalf("Reconcile() error = %v", err)
-	}
+	require.NoError(t, service.Reconcile(context.Background()))
 
 	got := service.Snapshot()
-	if len(got.Servers) != 2 {
-		t.Fatalf("Snapshot() = %#v, want healthy and unavailable services", got)
-	}
-	if !got.Servers[0].Enabled || got.Servers[1].Enabled {
-		t.Fatalf("enabled states = %t, %t; want true, false", got.Servers[0].Enabled, got.Servers[1].Enabled)
-	}
+	require.Len(t, got.Servers, 2)
+	assert.True(t, got.Servers[0].Enabled)
+	assert.False(t, got.Servers[1].Enabled)
 }
 
 func TestReconcileKeepsLastSnapshotWhenContainerListingFails(t *testing.T) {
 	config := DefaultLabelConfig()
 	discoverer := &fakeDiscoverer{toolsByURL: map[string][]Tool{"http://muni/mcp": nil}}
 	service := New(fakeSource{containers: []Container{{Labels: labels(config, "muni", "http://muni/mcp", "")}}}, discoverer, config)
-	if err := service.Reconcile(context.Background()); err != nil {
-		t.Fatalf("initial Reconcile() error = %v", err)
-	}
+	require.NoError(t, service.Reconcile(context.Background()))
 	before := service.Snapshot()
 	service.source = fakeSource{err: errors.New("Docker unavailable")}
 
-	if err := service.Reconcile(context.Background()); err == nil {
-		t.Fatal("Reconcile() error = nil, want error")
-	}
-	if got := service.Snapshot(); !reflect.DeepEqual(got, before) {
-		t.Fatalf("Snapshot() after failed list = %#v, want %#v", got, before)
-	}
-}
-
-func labels(config LabelConfig, name, url, description string) map[string]string {
-	return map[string]string{
-		config.EnabledKey:     config.EnabledValue,
-		config.NameKey:        name,
-		config.URLKey:         url,
-		config.DescriptionKey: description,
-	}
+	require.Error(t, service.Reconcile(context.Background()))
+	assert.Equal(t, before, service.Snapshot())
 }
 
 func TestLabelConfigFromEnvironmentUsesOverrides(t *testing.T) {
@@ -121,12 +96,17 @@ func TestLabelConfigFromEnvironmentUsesOverrides(t *testing.T) {
 			"MCP_LABEL_DESCRIPTION_KEY": "example.com/description",
 		}[name]
 	})
-	labels := labels(config, "weather", "http://weather/mcp", "Weather")
-	server, ok := config.serverFromLabels(labels)
-	if !ok {
-		t.Fatal("serverFromLabels() = false, want true")
-	}
-	if server.Name != "weather" || server.URL != "http://weather/mcp" || server.Description != "Weather" {
-		t.Fatalf("serverFromLabels() = %#v", server)
+
+	server, ok := config.serverFromLabels(labels(config, "weather", "http://weather/mcp", "Weather"))
+	require.True(t, ok)
+	assert.Equal(t, Server{Name: "weather", URL: "http://weather/mcp", Description: "Weather"}, server)
+}
+
+func labels(config LabelConfig, name, url, description string) map[string]string {
+	return map[string]string{
+		config.EnabledKey:     config.EnabledValue,
+		config.NameKey:        name,
+		config.URLKey:         url,
+		config.DescriptionKey: description,
 	}
 }
