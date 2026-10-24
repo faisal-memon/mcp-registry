@@ -11,6 +11,7 @@ concurrency:
 
 permissions:
   contents: write
+  packages: write
 
 jobs:
   release:
@@ -28,6 +29,25 @@ jobs:
           github-token: ${{ github.token }}
           write-tag: "true"
           write-major-tag: "true"
+
+      - name: Sign in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish container image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ steps.bump.outputs.new-tag }}
+            ghcr.io/${{ github.repository }}:latest
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.version=${{ steps.bump.outputs.new-tag }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
