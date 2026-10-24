@@ -41,14 +41,14 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	
+
 	dockerSource, err := docker.NewSource()
 	if err != nil {
 		return fmt.Errorf("create Docker source: %w", err)
 	}
-	
+
 	cache := registry.NewCache(dockerSource, mcp.NewDiscoverer(), config.Labels)
-	
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
