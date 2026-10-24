@@ -56,5 +56,5 @@ jobs:
 
       - name: Move floating major tag
         run: |
-          git tag -f "${{ steps.bump.outputs.major-tag }}" "${{ steps.bump.outputs.new-tag }}"
+          git tag -f "${{ steps.bump.outputs.major-tag }}" "${{ github.sha }}"
           git push --force origin "refs/tags/${{ steps.bump.outputs.major-tag }}"
