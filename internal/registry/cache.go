@@ -12,6 +12,16 @@ import (
 
 const reconcileTimeout = 10 * time.Second
 
+// ContainerSource lists currently running containers.
+type ContainerSource interface {
+	List(context.Context) ([]Container, error)
+}
+
+// Discoverer reads the tools exposed by one MCP endpoint.
+type Discoverer interface {
+	Discover(context.Context, string) ([]Tool, error)
+}
+
 // Cache holds the latest registry snapshot and refreshes it from live containers.
 type Cache struct {
 	source     ContainerSource
