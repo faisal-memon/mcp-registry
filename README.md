@@ -54,14 +54,13 @@ services:
     labels:
       mcp.enabled: "true"
       mcp.port: "8787"
-      mcp.path: "/mcp" # Optional: /mcp is the default.
 ```
 
-The registry uses the container name, here `muni-mcp`, as both the server name and network host. That name must resolve from the registry container on the shared network. `mcp.port` is required; `mcp.path` is optional.
+The registry uses the container name, here `muni-mcp`, as both the server name and network host. That name must resolve from the registry container on the shared network. `mcp.port` is required. The endpoint path defaults to `/mcp`.
 
-### Change the label contract
+## Configuration
 
-The defaults are generic, and may be changed through the registry container’s environment without rebuilding it:
+The registry’s defaults may be changed through its environment without rebuilding it:
 
 | Setting | Default | Purpose |
 | --- | --- | --- |
