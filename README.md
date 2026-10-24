@@ -1,6 +1,6 @@
 # MCP Registry
 
-`mcp-registry` automatically builds an in-memory registry of MCP servers from labelled Docker containers. It replaces a hand-maintained server list with the tools each running MCP service currently advertises.
+`mcp-registry` automatically builds an in-memory registry of MCP servers from labelled Docker containers.
 
 On startup, and again at a configurable interval, it:
 
